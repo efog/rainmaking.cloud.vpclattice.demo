@@ -6,7 +6,7 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as path from "path";
 import { Construct } from "constructs";
-import { DefaultVpcConstruct } from "../workload-vpc";
+import { WorkloadVpcConstruct } from "../workload-vpc";
 import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
@@ -42,7 +42,7 @@ export class AppServerStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: AppServerStackProps) {
         super(scope, id, props);
 
-        const vpc = new DefaultVpcConstruct(this, "AppServerStackVpc", {
+        const vpc = new WorkloadVpcConstruct(this, "AppServerStackVpc", {
             dynamoDBGatewayVpcEndpoint: true,
             ecrInterfaceVpcEndpoint: true,
             ecsInterfaceVpcEndpoint: true,
