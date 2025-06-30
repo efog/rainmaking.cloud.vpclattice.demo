@@ -6,7 +6,7 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as path from "path";
 import { Construct } from "constructs";
-import { DefaultVpcConstruct } from "../default-vpc";
+import { DefaultVpcConstruct } from "../workload-vpc";
 import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
@@ -17,7 +17,7 @@ import * as targets from "aws-cdk-lib/aws-route53-targets";
 /**
  * Web Server Stack Props
  */
-interface WebApiStackProps extends cdk.StackProps {
+interface AppServerStackProps extends cdk.StackProps {
     vpcId?: string;
     ecrRepositoryArn?: string;
 }
@@ -26,7 +26,7 @@ interface WebApiStackProps extends cdk.StackProps {
  * Web Server Stack
  * This stack creates a simple web server using ECS Fargate
  */
-export class WebApiStack extends cdk.Stack {
+export class AppServerStack extends cdk.Stack {
     
     private readonly _alb: cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer;
     public get alb(): cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer {
@@ -39,10 +39,10 @@ export class WebApiStack extends cdk.Stack {
      * @param id The construct ID
      * @param props The stack properties
      */
-    constructor(scope: Construct, id: string, props: WebApiStackProps) {
+    constructor(scope: Construct, id: string, props: AppServerStackProps) {
         super(scope, id, props);
 
-        const vpc = new DefaultVpcConstruct(this, "WebserverStackVpc", {
+        const vpc = new DefaultVpcConstruct(this, "AppServerStackVpc", {
             dynamoDBGatewayVpcEndpoint: true,
             ecrInterfaceVpcEndpoint: true,
             ecsInterfaceVpcEndpoint: true,
@@ -50,11 +50,11 @@ export class WebApiStack extends cdk.Stack {
             s3GatewayVpcEndpoint: true
         });
 
-        const webserverHostedZone = HostedZone.fromLookup(this, "WebApiHostedZone", {
+        const webserverHostedZone = HostedZone.fromLookup(this, "AppServerHostedZone", {
             domainName: "thisisnothelpful.com"
         });
 
-        const webserverAlbCertificate = new Certificate(this, "WebApiAlbCertificate", {
+        const webserverAlbCertificate = new Certificate(this, "AppServerAlbCertificate", {
             domainName: "*.vpclatticedemo.thisisnothelpful.com",
             validation: CertificateValidation.fromDns(webserverHostedZone)
         });
@@ -73,14 +73,14 @@ export class WebApiStack extends cdk.Stack {
         );
 
         // Create ALB
-        this._alb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(this, "WebApiALB", {
+        this._alb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(this, "AppServerALB", {
             vpc: vpc.vpc,
             internetFacing: false,
             securityGroup: albSecurityGroup
         });
 
         // Create Target Group
-        const targetGroup = new cdk.aws_elasticloadbalancingv2.ApplicationTargetGroup(this, "WebApiTargetGroup", {
+        const targetGroup = new cdk.aws_elasticloadbalancingv2.ApplicationTargetGroup(this, "AppServerTargetGroup", {
             vpc: vpc.vpc,
             port: 80,
             protocol: cdk.aws_elasticloadbalancingv2.ApplicationProtocol.HTTP,
@@ -92,7 +92,7 @@ export class WebApiStack extends cdk.Stack {
         });
 
         // Add Listener
-        this._alb.addListener("WebApiListener", {
+        this._alb.addListener("AppServerListener", {
             port: 443,
             protocol: ApplicationProtocol.HTTPS,
             defaultTargetGroups: [targetGroup],
@@ -100,7 +100,7 @@ export class WebApiStack extends cdk.Stack {
         });
 
         // Create DNS record for ALB
-        new route53.ARecord(this, "WebApiAliasRecord", {
+        new route53.ARecord(this, "AppServerAliasRecord", {
             zone: webserverHostedZone,
             target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(this._alb)),
             recordName: "api.vpclatticedemo"
@@ -120,29 +120,29 @@ export class WebApiStack extends cdk.Stack {
         );
 
         // Create Task Role
-        const taskRole = new iam.Role(this, "WebApiTaskRole", {
+        const taskRole = new iam.Role(this, "AppServerTaskRole", {
             assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com")
         });
 
         // Create Execution Role
-        const taskExecutionRole = new iam.Role(this, "WebApiTaskExecutionRole", {
+        const taskExecutionRole = new iam.Role(this, "AppServerTaskExecutionRole", {
             assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AmazonECSTaskExecutionRolePolicy")]
         });
 
-        const dockerImage = new DockerImageAsset(this, "WebApiImage", {
+        const dockerImage = new DockerImageAsset(this, "AppServerImage", {
             directory: path.join(__dirname, "."),
             platform: cdk.aws_ecr_assets.Platform.LINUX_ARM64 // Build for ARM64 (Graviton)
         });
         dockerImage.repository.grantPull(taskExecutionRole);
 
         // Create ECS Cluster
-        const cluster = new ecs.Cluster(this, "WebApiCluster", {
+        const cluster = new ecs.Cluster(this, "AppServerCluster", {
             vpc: vpc.vpc
         });
 
         // Create Task Definition for ARM64 (Graviton)
-        const taskDefinition = new ecs.FargateTaskDefinition(this, "WebApiTaskDef", {
+        const taskDefinition = new ecs.FargateTaskDefinition(this, "AppServerTaskDef", {
             memoryLimitMiB: 512,
             cpu: 256,
             taskRole: taskRole,
@@ -154,14 +154,14 @@ export class WebApiStack extends cdk.Stack {
         });
 
         // Add container to task definition
-        taskDefinition.addContainer("WebApiContainer", {
+        taskDefinition.addContainer("AppServerContainer", {
             image: ecs.ContainerImage.fromDockerImageAsset(dockerImage),
             portMappings: [{ containerPort: 80, hostPort: 80 }],
-            logging: ecs.LogDrivers.awsLogs({ streamPrefix: "WebApi" })
+            logging: ecs.LogDrivers.awsLogs({ streamPrefix: "AppServer" })
         });
 
         // Update Fargate Service with ALB integration
-        const webserverService = new ecs.FargateService(this, "WebApiService", {
+        const webserverService = new ecs.FargateService(this, "AppServerService", {
             cluster,
             taskDefinition,
             desiredCount: 1,
@@ -170,7 +170,7 @@ export class WebApiStack extends cdk.Stack {
             minHealthyPercent: 0
         });
         targetGroup.addTarget(webserverService.loadBalancerTarget({
-            containerName: "WebApiContainer",
+            containerName: "AppServerContainer",
             containerPort: 80
         }));
     }
