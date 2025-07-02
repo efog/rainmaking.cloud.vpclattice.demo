@@ -7,16 +7,16 @@ import { ARecord, IHostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 
 /**
- * VPC Lattice demo stack props
+ * Lattice construct props
  */
 interface LatticeStackProps extends cdk.StackProps {
     hostedZone: IHostedZone;
 }
 
 /**
- * VPC Lattice demo stack
+ * Lattice construct
  */
-export class LatticeStack extends cdk.Stack {
+export class Lattice extends Construct {
 
     private _serviceNetwork: cdk.aws_vpclattice.CfnServiceNetwork;
     private _hostedZone: cdk.aws_route53.IHostedZone;
@@ -52,19 +52,19 @@ export class LatticeStack extends cdk.Stack {
 
     addAlbService(alb: cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer, serviceName: string): vpclattice.CfnService {
 
+        const domainName = `latticeservice.${serviceName}.${this._hostedZone.zoneName}`;
         const serviceCertificate = new Certificate(this, "LatticeServiceDomainCertificate", {
-            domainName: `latticeservice.${serviceName}.${this._hostedZone.zoneName}`,
+            domainName,
             validation: CertificateValidation.fromDns(this._hostedZone)
         });
         // Create VPC Lattice Service with HTTPS only
         const service = new vpclattice.CfnService(this, "Service", {
             authType: "NONE",
-            certificateArn: serviceCertificate.certificateArn,
-            customDomainName: `latticeservice.${serviceName}.${this._hostedZone.zoneName}`,
-            name: serviceName,
+            // certificateArn: serviceCertificate.certificateArn,
+            // customDomainName: domainName,
+            // name: serviceName,
         });
 
-        
         // Associate Service with Service Network
         new vpclattice.CfnServiceNetworkServiceAssociation(this, "ServiceAssociation", {
             serviceNetworkIdentifier: this._serviceNetwork.attrId,
@@ -100,17 +100,17 @@ export class LatticeStack extends cdk.Stack {
             }
         });
 
-        // Create DNS alias record for the Lattice service
-        new ARecord(this, "ServiceAliasRecord", {
-            zone: this._hostedZone,
-            recordName: `${serviceName}.${this._hostedZone.zoneName}`,
-            target: RecordTarget.fromAlias({
-                bind: () => ({
-                    dnsName: service.attrDnsEntryDomainName,
-                    hostedZoneId: service.attrDnsEntryHostedZoneId
-                })
-            })
-        });
+        // // Create DNS alias record for the Lattice service
+        // new ARecord(this, "ServiceAliasRecord", {
+        //     zone: this._hostedZone,
+        //     recordName: domainName,
+        //     target: RecordTarget.fromAlias({
+        //         bind: () => ({
+        //             dnsName: service.attrDnsEntryDomainName,
+        //             hostedZoneId: service.attrDnsEntryHostedZoneId
+        //         })
+        //     })
+        // });
 
         return service;
     }
