@@ -7,7 +7,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as path from "path";
 import { Construct } from "constructs";
 import { WorkloadVpcConstruct } from "../workload-vpc";
-import { HostedZone } from "aws-cdk-lib/aws-route53";
+import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as route53 from "aws-cdk-lib/aws-route53";
@@ -18,8 +18,10 @@ import * as targets from "aws-cdk-lib/aws-route53-targets";
  * Web Server Stack Props
  */
 interface AppServerStackProps extends cdk.StackProps {
-    vpcId?: string;
+    appserverName?: string;
     ecrRepositoryArn?: string;
+    hostedZone?: IHostedZone;
+    vpcId?: string;
 }
 
 /**
@@ -27,7 +29,7 @@ interface AppServerStackProps extends cdk.StackProps {
  * This stack creates a simple web server using ECS Fargate
  */
 export class AppServerStack extends cdk.Stack {
-    
+
     private readonly _alb: cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer;
     public get alb(): cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer {
         return this._alb;
@@ -48,15 +50,6 @@ export class AppServerStack extends cdk.Stack {
             ecsInterfaceVpcEndpoint: true,
             enableInternetAccess: false,
             s3GatewayVpcEndpoint: true
-        });
-
-        const webserverHostedZone = HostedZone.fromLookup(this, "AppServerHostedZone", {
-            domainName: "thisisnothelpful.com"
-        });
-
-        const webserverAlbCertificate = new Certificate(this, "AppServerAlbCertificate", {
-            domainName: "*.vpclatticedemo.thisisnothelpful.com",
-            validation: CertificateValidation.fromDns(webserverHostedZone)
         });
 
         // Create Security Group for ALB
@@ -91,19 +84,34 @@ export class AppServerStack extends cdk.Stack {
             }
         });
 
+        if (props.hostedZone && props.appserverName) {
+            const appServerDomainName = `${props.appserverName}.${props.hostedZone.zoneName}`;
+            const appserverAlbCertificate = new Certificate(this, "AppServerAlbCertificate", {
+                domainName: `alb.${appServerDomainName}`,
+                validation: CertificateValidation.fromDns(props.hostedZone)
+            });
+
+            // Create DNS record for ALB
+            new route53.ARecord(this, "AppServerAliasRecord", {
+                zone: props.hostedZone,
+                target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(this._alb)),
+                recordName: `alb.${appServerDomainName}`
+            });
+
+            // Add Listener
+            this._alb.addListener("AppServerListener", {
+                port: 443,
+                protocol: ApplicationProtocol.HTTPS,
+                defaultTargetGroups: [targetGroup],
+                certificates: [appserverAlbCertificate]
+            });
+        }
         // Add Listener
         this._alb.addListener("AppServerListener", {
-            port: 443,
-            protocol: ApplicationProtocol.HTTPS,
+            port: 80,
+            protocol: ApplicationProtocol.HTTP,
             defaultTargetGroups: [targetGroup],
-            certificates: [webserverAlbCertificate]
-        });
-
-        // Create DNS record for ALB
-        new route53.ARecord(this, "AppServerAliasRecord", {
-            zone: webserverHostedZone,
-            target: route53.RecordTarget.fromAlias(new targets.LoadBalancerTarget(this._alb)),
-            recordName: "api.vpclatticedemo"
+            certificates: []
         });
 
         // Create Security Group for ECS Tasks
@@ -161,7 +169,7 @@ export class AppServerStack extends cdk.Stack {
         });
 
         // Update Fargate Service with ALB integration
-        const webserverService = new ecs.FargateService(this, "AppServerService", {
+        const appserverService = new ecs.FargateService(this, "AppServerService", {
             cluster,
             taskDefinition,
             desiredCount: 1,
@@ -169,7 +177,7 @@ export class AppServerStack extends cdk.Stack {
             securityGroups: [ecsSecurityGroup],
             minHealthyPercent: 0
         });
-        targetGroup.addTarget(webserverService.loadBalancerTarget({
+        targetGroup.addTarget(appserverService.loadBalancerTarget({
             containerName: "AppServerContainer",
             containerPort: 80
         }));
