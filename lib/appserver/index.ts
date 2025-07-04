@@ -1,4 +1,3 @@
-
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
@@ -6,29 +5,27 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as path from "path";
 import { Construct } from "constructs";
-import { WorkloadVpcConstruct } from "../workload-vpc";
 import { IHostedZone } from "aws-cdk-lib/aws-route53";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import * as targets from "aws-cdk-lib/aws-route53-targets";
-// import * as ecsp from "aws-cdk-lib/aws-ecs-patterns";
 
-/**
- * Web Server Stack Props
+/** 
+ * App server Props
  */
-interface AppServerStackProps extends cdk.StackProps {
+interface AppServerProps extends cdk.StackProps {
     appserverName?: string;
     ecrRepositoryArn?: string;
     hostedZone?: IHostedZone;
-    vpcId?: string;
+    vpc: ec2.IVpc;
 }
 
 /**
- * Web Server Stack
+ * App server
  * This stack creates a simple web server using ECS Fargate
  */
-export class AppServerStack extends cdk.Stack {
+export class AppServer extends Construct {
 
     private readonly _alb: cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer;
     public get alb(): cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer {
@@ -41,20 +38,13 @@ export class AppServerStack extends cdk.Stack {
      * @param id The construct ID
      * @param props The stack properties
      */
-    constructor(scope: Construct, id: string, props: AppServerStackProps) {
-        super(scope, id, props);
+    constructor(scope: Construct, id: string, props: AppServerProps) {
+        super(scope, id);
 
-        const vpc = new WorkloadVpcConstruct(this, "AppServerStackVpc", {
-            dynamoDBGatewayVpcEndpoint: true,
-            ecrInterfaceVpcEndpoint: true,
-            ecsInterfaceVpcEndpoint: true,
-            enableInternetAccess: false,
-            s3GatewayVpcEndpoint: true
-        });
-
+        const vpc = props.vpc;
         // Create Security Group for ALB
         const albSecurityGroup = new ec2.SecurityGroup(this, "AlbSecurityGroup", {
-            vpc: vpc.vpc,
+            vpc: vpc,
             allowAllOutbound: true,
             description: "Security group for ALB"
         });
@@ -65,16 +55,22 @@ export class AppServerStack extends cdk.Stack {
             "Allow HTTPS traffic from anywhere"
         );
 
+        albSecurityGroup.addIngressRule(
+            ec2.Peer.anyIpv4(),
+            ec2.Port.tcp(80),
+            "Allow HTTP traffic from anywhere"
+        );
+
         // Create ALB
         this._alb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(this, "AppServerALB", {
-            vpc: vpc.vpc,
+            vpc: vpc,
             internetFacing: false,
             securityGroup: albSecurityGroup
         });
 
         // Create Target Group
         const targetGroup = new cdk.aws_elasticloadbalancingv2.ApplicationTargetGroup(this, "AppServerTargetGroup", {
-            vpc: vpc.vpc,
+            vpc: vpc,
             port: 80,
             protocol: cdk.aws_elasticloadbalancingv2.ApplicationProtocol.HTTP,
             targetType: cdk.aws_elasticloadbalancingv2.TargetType.IP,
@@ -116,7 +112,7 @@ export class AppServerStack extends cdk.Stack {
 
         // Create Security Group for ECS Tasks
         const ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSecurityGroup", {
-            vpc: vpc.vpc,
+            vpc: vpc,
             allowAllOutbound: true,
             description: "Security group for ECS tasks"
         });
@@ -146,7 +142,7 @@ export class AppServerStack extends cdk.Stack {
 
         // Create ECS Cluster
         const cluster = new ecs.Cluster(this, "AppServerCluster", {
-            vpc: vpc.vpc
+            vpc: vpc
         });
 
         // Create Task Definition for ARM64 (Graviton)
