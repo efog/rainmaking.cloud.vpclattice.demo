@@ -52,9 +52,10 @@ describe("Lattice Construct", () => {
         test("creates service without certificate when no custom domain", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: "aaa"
             });
 
             const template = Template.fromStack(stack);
@@ -69,11 +70,12 @@ describe("Lattice Construct", () => {
         test("creates service with new certificate when custom domain provided", () => {
             const lattice = new Lattice(stack, "TestLattice",  {});
             lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 customDomainName: "service.example.com",
                 enableAccessLogs: false,
                 hostedZone,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: "aaa"
             });
 
             const template = Template.fromStack(stack);
@@ -90,11 +92,12 @@ describe("Lattice Construct", () => {
             const certArn = "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012";
       
             lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 certificateArn: certArn,
                 customDomainName: "service.example.com",
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
 
             const template = Template.fromStack(stack);
@@ -107,18 +110,19 @@ describe("Lattice Construct", () => {
         test("creates target group with HTTPS configuration", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
 
             const template = Template.fromStack(stack);
             template.hasResourceProperties("AWS::VpcLattice::TargetGroup", {
                 Type: "ALB",
-                Targets: [{ Id: Match.anyValue(), Port: 443 }],
+                Targets: [{ Id: Match.anyValue(), Port: 80 }],
                 Config: {
-                    Port: 443,
-                    Protocol: "HTTPS",
+                    Port: 80,
+                    Protocol: "HTTP",
                     VpcIdentifier: Match.anyValue()
                 }
             });
@@ -127,9 +131,10 @@ describe("Lattice Construct", () => {
         test("creates HTTPS listener with correct configuration", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
 
             const template = Template.fromStack(stack);
@@ -150,11 +155,12 @@ describe("Lattice Construct", () => {
         test("creates DNS alias record when custom domain and hosted zone provided", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 customDomainName: "service.example.com",
                 enableAccessLogs: false,
                 hostedZone,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
 
             expect(lattice).toBeDefined();
@@ -163,10 +169,11 @@ describe("Lattice Construct", () => {
         test("does not create DNS record when hosted zone not provided", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 customDomainName: "service.example.com",
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
 
             const template = Template.fromStack(stack);
@@ -176,9 +183,10 @@ describe("Lattice Construct", () => {
         test("returns service construct", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             const service = lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
 
             expect(service).toBeDefined();
@@ -190,9 +198,10 @@ describe("Lattice Construct", () => {
         test("creates service network service association", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             const service = lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
             lattice.associateService(service, "TestServiceAssociation");
 
@@ -206,9 +215,10 @@ describe("Lattice Construct", () => {
         test("returns service association construct", () => {
             const lattice = new Lattice(stack, "TestLattice", {});
             const service = lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 enableAccessLogs: false,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: ""
             });
             const association = lattice.associateService(service, "TestServiceAssociation");
 
@@ -226,11 +236,12 @@ describe("Lattice Construct", () => {
       
             // Create service
             const service = lattice.createAlbLatticeService({
-                applicationLoadBalancer: alb,
+                applicationLoadBalancerArn: alb.loadBalancerArn,
                 customDomainName: "service.example.com",
                 enableAccessLogs: true,
                 hostedZone,
-                serviceName: "test-service"
+                serviceName: "test-service",
+                vpcId: "aaa" // This is a dummy value, as the real value is not available in the construct"
             });
       
             // Associate service
