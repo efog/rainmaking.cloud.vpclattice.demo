@@ -64,6 +64,7 @@ export class VpclatticedemoStack extends cdk.Stack {
         });
         this._lambdaService = this._vpcLatticeStack.createLambdaLatticeService(
             {
+                authType: "AWS_IAM",
                 handler: this._lambda.lambdaFunction,
                 serviceName: "lambda",
             });

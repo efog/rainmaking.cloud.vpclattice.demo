@@ -6,6 +6,7 @@ import { IVpc } from "aws-cdk-lib/aws-ec2";
 import { CnameRecord, IHostedZone } from "aws-cdk-lib/aws-route53";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 /**
  * Lattice construct
@@ -52,11 +53,24 @@ export class Lattice extends Construct {
      * Associates a VPC with the service network
      * @param vpcId The VPC ID
      */
-    public associateVpc(vpc: IVpc, associationName: string): vpclattice.CfnServiceNetworkVpcAssociation {
+    public associateVpc(vpc: IVpc, associationName: string, securityGroupIds: string[] = []): vpclattice.CfnServiceNetworkVpcAssociation {
         const targetVpc = vpc;
+
+        // Create default security group for the VPC association
+        const securityGroup = new cdk.aws_ec2.SecurityGroup(this, `${associationName}SecurityGroup`, {
+            vpc: targetVpc,
+            allowAllOutbound: true,
+            description: "Default security group for VPC Lattice association"
+        });
+        securityGroup.addIngressRule(
+            cdk.aws_ec2.Peer.ipv4(targetVpc.vpcCidrBlock),
+            cdk.aws_ec2.Port.allTcp(),
+            "Allow traffic from VPC"
+        );
         return new vpclattice.CfnServiceNetworkVpcAssociation(this, `ServiceNetworkVpcAssociation${associationName}`, {
             vpcIdentifier: targetVpc.vpcId,
-            serviceNetworkIdentifier: this._serviceNetwork.attrId
+            serviceNetworkIdentifier: this._serviceNetwork.attrId,
+            securityGroupIds: [...securityGroupIds, securityGroup.securityGroupId]
         });
     }
 
@@ -65,10 +79,32 @@ export class Lattice extends Construct {
      * @param props The service properties
      * @returns The VPC Lattice service
      */
-    createLambdaLatticeService(props: { handler: cdk.aws_lambda.IFunction; serviceName: string; }): vpclattice.CfnService {
+    createLambdaLatticeService(props: {
+        handler: cdk.aws_lambda.IFunction;
+        serviceName: string;
+        authType?: string;
+        iamPolicyStatements?: PolicyStatement[]
+    }): vpclattice.CfnService {
+
         const service = new vpclattice.CfnService(this, `${props.serviceName}-service`, {
-            authType: "NONE"
+            authType: !props.authType ? "NONE" : props.authType!
         });
+
+        // Minimal auth policy allowing access
+        if (props.authType && props.authType === "AWS_IAM") {
+            new vpclattice.CfnAuthPolicy(this, `${props.serviceName}-auth-policy`, {
+                resourceIdentifier: service.attrArn,
+                policy: {
+                    Version: "2012-10-17",
+                    Statement: props.iamPolicyStatements ? props.iamPolicyStatements : [{
+                        Effect: "Allow",
+                        Principal: "*",
+                        Action: "vpc-lattice-svcs:Invoke",
+                        Resource: "*"
+                    }]
+                }
+            });
+        }
 
         // Create VPC Lattice Target Group for Lambda
         const targetGroup = new vpclattice.CfnTargetGroup(this, `${props.serviceName}-target-group`, {
@@ -92,7 +128,6 @@ export class Lattice extends Construct {
                 }
             }
         });
-
         return service;
     }
 
@@ -103,10 +138,12 @@ export class Lattice extends Construct {
      */
     public createAlbLatticeService(props: {
         applicationLoadBalancerArn: string,
+        authType?: string,
         certificateArn?: string,
         customDomainName?: string, // e.g. latticeservice.rainmaking.cloud.
         enableAccessLogs: boolean,
         hostedZone?: IHostedZone, // e.g. rainmaking.cloud.
+        iamPolicyStatements?: PolicyStatement[]
         serviceName: string,
         vpcId: string
     }): vpclattice.CfnService {
@@ -118,11 +155,27 @@ export class Lattice extends Construct {
             }) : null;
 
         const service = new vpclattice.CfnService(this, `${props.serviceName}-service`, {
-            authType: "NONE",
+            authType: !props.authType ? "NONE" : props.authType!,
             certificateArn: serviceCertificate && serviceCertificate.certificateArn || undefined,
             customDomainName: props.customDomainName,
             name: `${props.serviceName}-service`
         });
+
+        // Minimal auth policy allowing access
+        if (props.authType && props.authType === "AWS_IAM") {
+            new vpclattice.CfnAuthPolicy(this, `${props.serviceName}-auth-policy`, {
+                resourceIdentifier: service.attrArn,
+                policy: {
+                    Version: "2012-10-17",
+                    Statement: props.iamPolicyStatements ? props.iamPolicyStatements : [{
+                        Effect: "Allow",
+                        Principal: "*",
+                        Action: "vpc-lattice-svcs:Invoke",
+                        Resource: "*"
+                    }]
+                }
+            });
+        }
 
         if (props.enableAccessLogs) {
             this._latticeServiceLogGroup = new LogGroup(this, `${props.serviceName}-log-group`, {
