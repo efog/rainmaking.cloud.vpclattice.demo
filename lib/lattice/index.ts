@@ -120,7 +120,8 @@ export class Lattice extends Construct {
         const service = new vpclattice.CfnService(this, `${props.serviceName}-service`, {
             authType: "NONE",
             certificateArn: serviceCertificate && serviceCertificate.certificateArn || undefined,
-            customDomainName: props.customDomainName
+            customDomainName: props.customDomainName,
+            name: `${props.serviceName}-service`
         });
 
         if (props.enableAccessLogs) {
