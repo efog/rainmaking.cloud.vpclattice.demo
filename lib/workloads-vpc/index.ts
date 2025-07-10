@@ -5,7 +5,7 @@ import { Construct } from "constructs";
 /**
  * Default VPC Stack Props
  */
-export interface WorkloadVpcProps {
+export interface WorkloadsVpcProps {
     dynamoDBGatewayVpcEndpoint: boolean,
     ecrInterfaceVpcEndpoint: boolean,
     ecsInterfaceVpcEndpoint: boolean,
@@ -16,7 +16,7 @@ export interface WorkloadVpcProps {
 /**
  * Workload VPC construct.
  */
-export class WorkloadVpc extends Construct {
+export class WorkloadsVpc extends Construct {
     
     public readonly vpc: ec2.Vpc;
     private readonly _albSubnets: cdk.aws_ec2.SelectedSubnets;
@@ -31,7 +31,7 @@ export class WorkloadVpc extends Construct {
      * @param id stack id
      * @param props stack props
      */
-    constructor(scope: Construct, id: string, props?: cdk.StackProps & WorkloadVpcProps) {
+    constructor(scope: Construct, id: string, props?: cdk.StackProps & WorkloadsVpcProps) {
         super(scope, id);
 
         // Create VPC with appropriate subnet configuration

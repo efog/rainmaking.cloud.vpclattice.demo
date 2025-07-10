@@ -4,7 +4,7 @@ import { Construct } from "constructs";
 import { AppServer } from "./appserver";
 import { Lattice } from "./lattice";
 import { LambdaVpcFunctionConstruct } from "./functions";
-import { WorkloadVpc } from "./workload-vpc";
+import { WorkloadsVpc } from "./workloads-vpc";
 
 export interface VpclatticedemoStackProps extends cdk.StackProps {
     workloadVpcId?: string
@@ -20,8 +20,9 @@ export class VpclatticedemoStack extends cdk.Stack {
     private readonly _defaultVpc: cdk.aws_ec2.IVpc;
     private readonly _appserverService: cdk.aws_vpclattice.CfnService;
     private readonly _lambda: LambdaVpcFunctionConstruct;
-    private readonly _workloadsVpc: WorkloadVpc;
+    private readonly _workloadsVpc: WorkloadsVpc;
     private readonly _lambdaService: cdk.aws_vpclattice.CfnService;
+    private readonly _endpointsVpc: WorkloadsVpc;;
 
     /**
      * Default constructor
@@ -32,8 +33,15 @@ export class VpclatticedemoStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: VpclatticedemoStackProps & cdk.StackProps) {
         super(scope, id, props);
         this._defaultVpc = cdk.aws_ec2.Vpc.fromLookup(this, "DefaultVPC", { isDefault: true });
-        this._workloadsVpc = new WorkloadVpc(this, "WorkloadVpc", Object.assign({
-            env: { account: "905418095398", region: "us-east-1" },
+        this._workloadsVpc = new WorkloadsVpc(this, "WorkloadsVpc", Object.assign({
+        }, {
+            dynamoDBGatewayVpcEndpoint: true,
+            ecrInterfaceVpcEndpoint: true,
+            ecsInterfaceVpcEndpoint: true,
+            enableInternetAccess: false,
+            s3GatewayVpcEndpoint: true
+        }));
+        this._endpointsVpc = new WorkloadsVpc(this, "EndpointsVpc", Object.assign({
         }, {
             dynamoDBGatewayVpcEndpoint: true,
             ecrInterfaceVpcEndpoint: true,
@@ -70,5 +78,7 @@ export class VpclatticedemoStack extends cdk.Stack {
             });
         this._vpcLatticeStack.associateService(this._appserverService, "appserver-asscn");
         this._vpcLatticeStack.associateService(this._lambdaService, "lambda-asscn");
+
+        // this._vpcLatticeStack.enableServiceAccessGateway("s3");
     }
 }      

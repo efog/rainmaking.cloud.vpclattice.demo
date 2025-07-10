@@ -1,9 +1,9 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Template } from "aws-cdk-lib/assertions";
-import { WorkloadVpc } from "../lib/workload-vpc/index";
+import { WorkloadsVpc } from "../lib/workloads-vpc/index";
 
-describe("WorkloadVpc", () => {
+describe("WorkloadsVpc", () => {
     let app: cdk.App;
     let stack: cdk.Stack;
 
@@ -13,7 +13,7 @@ describe("WorkloadVpc", () => {
     });
 
     test("creates VPC with default configuration", () => {
-        new WorkloadVpc(stack, "TestVpc");
+        new WorkloadsVpc(stack, "TestVpc");
 
         const template = Template.fromStack(stack);
         template.hasResourceProperties("AWS::EC2::VPC", {
@@ -23,7 +23,7 @@ describe("WorkloadVpc", () => {
     });
 
     test("creates required VPC endpoints", () => {
-        new WorkloadVpc(stack, "TestVpc");
+        new WorkloadsVpc(stack, "TestVpc");
 
         const template = Template.fromStack(stack);
         template.hasResourceProperties("AWS::EC2::VPCEndpoint", {
@@ -33,7 +33,7 @@ describe("WorkloadVpc", () => {
     });
 
     test("creates internet gateway when enabled", () => {
-        new WorkloadVpc(stack, "TestVpc", {
+        new WorkloadsVpc(stack, "TestVpc", {
             enableInternetAccess: true,
             dynamoDBGatewayVpcEndpoint: false,
             ecrInterfaceVpcEndpoint: false,
@@ -46,14 +46,14 @@ describe("WorkloadVpc", () => {
     });
 
     test("exposes vpc and albSubnets properties", () => {
-        const workloadVpc = new WorkloadVpc(stack, "TestVpc");
+        const workloadVpc = new WorkloadsVpc(stack, "TestVpc");
 
         expect(workloadVpc.vpc).toBeDefined();
         expect(workloadVpc.albSubnets).toBeDefined();
     });
 
     test("adds interface VPC endpoint", () => {
-        const workloadVpc = new WorkloadVpc(stack, "TestVpc");
+        const workloadVpc = new WorkloadsVpc(stack, "TestVpc");
         workloadVpc.addInterfaceVpcEndpoint(ec2.InterfaceVpcEndpointAwsService.LAMBDA);
 
         const template = Template.fromStack(stack);

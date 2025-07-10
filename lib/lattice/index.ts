@@ -80,14 +80,26 @@ export class Lattice extends Construct {
      * @returns The VPC Lattice service
      */
     createLambdaLatticeService(props: {
-        handler: cdk.aws_lambda.IFunction;
-        serviceName: string;
         authType?: string;
+        certificateArn?: string,
+        customDomainName?: string, // e.g. latticeservice.rainmaking.cloud.
+        handler: cdk.aws_lambda.IFunction;
+        hostedZone?: IHostedZone, // e.g. rainmaking.cloud.
         iamPolicyStatements?: PolicyStatement[]
+        serviceName: string;
     }): vpclattice.CfnService {
 
+        const serviceCertificate = props.customDomainName && props.certificateArn ? Certificate.fromCertificateArn(this, `${props.serviceName}-acm-certificate`, props.certificateArn)
+            : props.customDomainName ? new Certificate(this, `${props.serviceName}-acm-construct-certificate`, {
+                domainName: props.customDomainName,
+                validation: CertificateValidation.fromDns(props.hostedZone)
+            }) : null;
+
         const service = new vpclattice.CfnService(this, `${props.serviceName}-service`, {
-            authType: !props.authType ? "NONE" : props.authType!
+            authType: !props.authType ? "NONE" : props.authType!,
+            certificateArn: serviceCertificate && serviceCertificate.certificateArn || undefined,
+            customDomainName: props.customDomainName,
+            name: `${props.serviceName}-service`
         });
 
         // Minimal auth policy allowing access
@@ -239,4 +251,33 @@ export class Lattice extends Construct {
             serviceNetworkIdentifier: this._serviceNetwork.attrId
         });
     };
+
+    /**
+     * Enables service access through VPC Lattice service network
+     * @param region AWS region for service endpoint
+     * @returns Resource Gateway for service access
+     */
+    public enableServiceAccessGateway(service: string, region: string = "us-east-1"): vpclattice.CfnResourceGateway {
+        // Create Resource Gateway
+        const resourceGateway = new vpclattice.CfnResourceGateway(this, "DynamoDBResourceGateway", {
+            name: `${service}-gateway`
+        });
+
+        // Create Resource Configuration for DynamoDB
+        new vpclattice.CfnResourceConfiguration(this, `${service}DBResourceConfig`, {
+            allowAssociationToSharableServiceNetwork: true,
+            portRanges: ["443"],
+            protocolType: "TCP",
+            name: `${service}-${region}-resource-config`,
+            resourceConfigurationAuthType: "NONE",
+            resourceConfigurationDefinition: {
+                domainName: `${service}.${region}.amazonaws.com`
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            } as any,
+            resourceConfigurationType: "SINGLE",
+            resourceGatewayId: resourceGateway.attrId
+        });
+
+        return resourceGateway;
+    }
 }
