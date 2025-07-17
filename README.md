@@ -28,38 +28,6 @@ The infrastructure creates:
 - AWS account and credentials configured
 
 ## Deployment
-
-1. Install dependencies:
-PC Lattice Demo Application
-
-This project demonstrates how to use AWS VPC Lattice to enable secure service-to-service communication across multiple VPCs and accounts.
-
-## Overview
-
-The application deploys a sample microservices architecture using VPC Lattice as the service networking layer. It includes:
-
-- A VPC Lattice service network
-- Multiple VPCs with service and client workloads
-- Service discovery and routing configuration
-- Security groups and IAM policies for access control
-
-## Architecture
-
-The infrastructure creates:
-
-1. A VPC Lattice service network that acts as the connectivity backbone
-2. Producer VPC containing backend services
-3. Consumer VPC with client applications
-4. Service associations and routing rules
-5. Security groups and IAM roles for secure access
-
-## Prerequisites
-
-- AWS CDK CLI v2.x
-- Node.js 14.x or later
-- AWS account and credentials configured
-
-## Deployment
 ### Infrastructure Components
 
 The VPC Lattice Demo application deploys the following components:
