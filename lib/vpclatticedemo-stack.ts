@@ -41,14 +41,14 @@ export class VpclatticedemoStack extends cdk.Stack {
             enableInternetAccess: false,
             s3GatewayVpcEndpoint: true
         }));
-        this._endpointsVpc = new WorkloadsVpc(this, "EndpointsVpc", Object.assign({
-        }, {
-            dynamoDBGatewayVpcEndpoint: true,
-            ecrInterfaceVpcEndpoint: true,
-            ecsInterfaceVpcEndpoint: true,
-            enableInternetAccess: false,
-            s3GatewayVpcEndpoint: true
-        }));
+        // this._endpointsVpc = new WorkloadsVpc(this, "EndpointsVpc", Object.assign({
+        // }, {
+        //     dynamoDBGatewayVpcEndpoint: true,
+        //     ecrInterfaceVpcEndpoint: true,
+        //     ecsInterfaceVpcEndpoint: true,
+        //     enableInternetAccess: false,
+        //     s3GatewayVpcEndpoint: true
+        // }));
 
         this._lambda = new LambdaVpcFunctionConstruct(this, "LambdaFunction", {
             entry: path.join(__dirname, "functions", "demo", "src", "index.ts"),
