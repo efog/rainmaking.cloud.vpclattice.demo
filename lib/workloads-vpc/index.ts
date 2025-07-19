@@ -86,9 +86,6 @@ export class WorkloadsVpc extends Construct {
         gatewayEndpoints[ec2.GatewayVpcEndpointAwsService.S3.name] = this.vpc.addGatewayEndpoint("S3GatewayEndpoint", {
             service: ec2.GatewayVpcEndpointAwsService.S3
         });
-        gatewayEndpoints[ec2.GatewayVpcEndpointAwsService.S3_EXPRESS.name] = this.vpc.addGatewayEndpoint("S3ExpressGatewayEndpoint", {
-            service: ec2.GatewayVpcEndpointAwsService.S3_EXPRESS
-        });
         gatewayEndpoints[ec2.GatewayVpcEndpointAwsService.DYNAMODB.name] = this.vpc.addGatewayEndpoint("DynamoDBGatewayEndpoint", {
             service: ec2.GatewayVpcEndpointAwsService.DYNAMODB
         });
