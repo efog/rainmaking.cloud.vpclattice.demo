@@ -109,3 +109,10 @@ cdk destroy
 ```
 
 **Note**: Ensure all VPC Lattice associations are removed before destroying the stack.
+
+### Tags
+
+The following tags are automatically applied to all resources:
+
+- **environment**: Identifies deployment environment (dev/staging/prod)
+- **project**: Project identifier

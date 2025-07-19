@@ -5,6 +5,7 @@ import { AppServer } from "./appserver";
 import { Lattice } from "./lattice";
 import { LambdaVpcFunctionConstruct } from "./functions";
 import { WorkloadsVpc } from "./workloads-vpc";
+import { InterfaceVpcEndpointAwsService } from "aws-cdk-lib/aws-ec2";
 
 export interface VpclatticedemoStackProps extends cdk.StackProps {
     workloadVpcId?: string
@@ -22,7 +23,6 @@ export class VpclatticedemoStack extends cdk.Stack {
     private readonly _lambda: LambdaVpcFunctionConstruct;
     private readonly _workloadsVpc: WorkloadsVpc;
     private readonly _lambdaService: cdk.aws_vpclattice.CfnService;
-    private readonly _endpointsVpc: WorkloadsVpc;;
 
     /**
      * Default constructor
@@ -32,38 +32,32 @@ export class VpclatticedemoStack extends cdk.Stack {
      */
     constructor(scope: Construct, id: string, props?: VpclatticedemoStackProps & cdk.StackProps) {
         super(scope, id, props);
+
+        // Workloads setup
         this._defaultVpc = cdk.aws_ec2.Vpc.fromLookup(this, "DefaultVPC", { isDefault: true });
         this._workloadsVpc = new WorkloadsVpc(this, "WorkloadsVpc", Object.assign({
         }, {
-            dynamoDBGatewayVpcEndpoint: true,
-            ecrInterfaceVpcEndpoint: true,
-            ecsInterfaceVpcEndpoint: true,
             enableInternetAccess: false,
-            s3GatewayVpcEndpoint: true
+            interfaceEndpoints: [InterfaceVpcEndpointAwsService.ECR,
+                InterfaceVpcEndpointAwsService.ECR_DOCKER,
+                InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+                InterfaceVpcEndpointAwsService.ECS
+            ]
         }));
-        // this._endpointsVpc = new WorkloadsVpc(this, "EndpointsVpc", Object.assign({
-        // }, {
-        //     dynamoDBGatewayVpcEndpoint: true,
-        //     ecrInterfaceVpcEndpoint: true,
-        //     ecsInterfaceVpcEndpoint: true,
-        //     enableInternetAccess: false,
-        //     s3GatewayVpcEndpoint: true
-        // }));
-
         this._lambda = new LambdaVpcFunctionConstruct(this, "LambdaFunction", {
             entry: path.join(__dirname, "functions", "demo", "src", "index.ts"),
             vpc: this._workloadsVpc.vpc
         });
-
         this._appServerStack = new AppServer(this, "AppServer", Object.assign(props!, {
             vpc: this._workloadsVpc.vpc
         }));
 
+        // Lattice setup
         this._vpcLatticeStack = new Lattice(this, "VpcLattice", {
+            createServicesVpc: false,
             enableAccessLogs: true
         });
         this._vpcLatticeStack.associateVpc(this._defaultVpc, "consumer-asscn");
-
         this._appserverService = this._vpcLatticeStack.createAlbLatticeService({
             applicationLoadBalancerArn: this._appServerStack.alb.loadBalancerArn,
             enableAccessLogs: true,

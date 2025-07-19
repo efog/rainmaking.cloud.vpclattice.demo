@@ -2,11 +2,12 @@
 import * as cdk from "aws-cdk-lib";
 import * as vpclattice from "aws-cdk-lib/aws-vpclattice";
 import { Construct } from "constructs";
-import { IVpc } from "aws-cdk-lib/aws-ec2";
+import { InterfaceVpcEndpointAwsService, IVpc } from "aws-cdk-lib/aws-ec2";
 import { CnameRecord, IHostedZone } from "aws-cdk-lib/aws-route53";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { WorkloadsVpc } from "../workloads-vpc";
 
 /**
  * Lattice construct
@@ -14,9 +15,9 @@ import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 export class Lattice extends Construct {
 
     private readonly _serviceNetwork: cdk.aws_vpclattice.CfnServiceNetwork;
+    private _servicesVpc?: WorkloadsVpc;
     private _latticeServiceLogGroup: cdk.aws_logs.ILogGroup;
     private _latticeServiceNetworkLogGroup: cdk.aws_logs.ILogGroup;
-    private readonly _vpc?: cdk.aws_ec2.IVpc;
 
     /**
      * Default constructor
@@ -26,10 +27,9 @@ export class Lattice extends Construct {
      */
     constructor(scope: Construct, id: string, props: {
         enableAccessLogs?: boolean,
-        vpc?: IVpc
+        createServicesVpc?: boolean
     } & cdk.StackProps) {
         super(scope, id);
-        this._vpc = props.vpc;
         this._serviceNetwork = new vpclattice.CfnServiceNetwork(this, "ServiceNetwork", {
             sharingConfig: {
                 enabled: true
@@ -44,8 +44,46 @@ export class Lattice extends Construct {
                 resourceIdentifier: this._serviceNetwork.attrArn
             });
         }
-        if (this._vpc) {
-            this.associateVpc(this._vpc, "VpcAssociation");
+        if (props.createServicesVpc) {
+            this.scaffoldServicesVpc({
+                interfaceEndpoints: [
+                    InterfaceVpcEndpointAwsService.ECR,
+                    InterfaceVpcEndpointAwsService.ECR_DOCKER,
+                    InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+                    InterfaceVpcEndpointAwsService.CLOUDWATCH_MONITORING,
+                    InterfaceVpcEndpointAwsService.ECS
+                ]
+            });
+        }
+    }
+
+    scaffoldServicesVpc(props: { interfaceEndpoints?: InterfaceVpcEndpointAwsService[] }) {
+        this._servicesVpc = new WorkloadsVpc(this, "EndpointsVpc", Object.assign({
+        }, {
+            enableInternetAccess: false,
+            interfaceEndpoints: props.interfaceEndpoints
+        }));
+
+        // Create Resource Gateway
+        const resourceGateway = new vpclattice.CfnResourceGateway(this, "ResourceGateway", {
+            name: "awsservices-resource-gateway",
+            subnetIds: this._servicesVpc.privateSubnetsWithEgress.subnetIds,
+            vpcIdentifier: this._servicesVpc.vpc.vpcId
+        });
+
+        for (let index = 0; index < props.interfaceEndpoints!.length; index++) {
+            const element = props.interfaceEndpoints![index];
+            new vpclattice.CfnResourceConfiguration(this, `${element.shortName}InterfaceVpceResourceConfig`, {
+                allowAssociationToSharableServiceNetwork: true,
+                name: `${element.shortName}InterfaceVpceResourceConfig`,
+                resourceConfigurationType: "SINGLE",
+                portRanges: ["443"],
+                resourceConfigurationAuthType: "NONE",
+                resourceConfigurationDefinition: {
+                    ipResource: "192.168.1.1"
+                } as unknown as undefined,
+                resourceGatewayId: resourceGateway.attrId
+            });
         }
     }
 
@@ -272,7 +310,7 @@ export class Lattice extends Construct {
             resourceConfigurationAuthType: "NONE",
             resourceConfigurationDefinition: {
                 domainName: `${service}.${region}.amazonaws.com`
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any,
             resourceConfigurationType: "SINGLE",
             resourceGatewayId: resourceGateway.attrId
