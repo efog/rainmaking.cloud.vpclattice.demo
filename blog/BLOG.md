@@ -51,7 +51,7 @@ This architecture eliminates the need for complex VPC peering or Transit Gateway
 
 While VPC Lattice offers significant benefits, it's important to be aware of its service quotas and limitations:
 
-### Default Service Quotas
+### Default Service Quotas (Soft Limits)
 
 - **Service Networks**: 10 per AWS Region
 - **Services**: 500 per AWS Region
@@ -62,7 +62,9 @@ While VPC Lattice offers significant benefits, it's important to be aware of its
 - **Target Groups**: 5 per service
 - **Targets**: 1,000 per target group
 
-### Performance Considerations
+As usual, before requesting changes to limits, validate that the architecture is not the issue. Simple changes often lead to improvements that don't require quota changes.
+
+### Performance Considerations (Hard Limits)
 
 - **Request Rate**: Up to 50,000 requests per second per service
 - **Connection Timeout**: 10 seconds maximum
