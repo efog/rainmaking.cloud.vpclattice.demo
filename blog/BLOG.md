@@ -33,7 +33,7 @@ VPC Lattice facilitates integration with other Line of Business systems both on-
  
 Services deployed on VPC Lattice can leverage familiar IAM policies for access control, often eliminating the need for custom authentication solutions or third-party OIDC providers.
 
-```json
+```typescript
 {
     "Version": "2012-10-17",
     "Statement": [
