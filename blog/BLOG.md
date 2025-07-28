@@ -1,3 +1,5 @@
+![heading](./assets/flatiron.png)
+
 # Modernize Cloud Applications with AWS VPC Lattice
  
 As cloud applications evolve from simple three-tier architectures to complex microservices ecosystems, traditional networking approaches become bottlenecks to innovation. Teams struggle with VPC peering complexity, Transit Gateway costs, and the operational overhead of managing service-to-service connectivity at scale. [AWS VPC Lattice](https://docs.aws.amazon.com/vpc-lattice/) emerges as a purpose-built solution that addresses these scalability, security, and operational efficiency challenges in modern cloud architectures.
