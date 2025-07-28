@@ -1,4 +1,4 @@
-![heading](./assets/flatiron.png)
+![heading](https://assets.rainmaking.cloud/images/flatiron_compressed.png)
 
 # Modernize Cloud Applications with AWS VPC Lattice
  
@@ -167,7 +167,7 @@ The CDK application deploys:
  
 ### VPC Lattice Demo Architecture Diagram
  
-![medium](./assets/diagram-highlevel-arch.png)
+![medium](https://assets.rainmaking.cloud/images/diagram-highlevel-arch.png)
  
 #### Key Architectural Benefits Demonstrated:
  
