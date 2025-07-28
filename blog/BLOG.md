@@ -6,7 +6,7 @@ As cloud applications evolve from simple three-tier architectures to complex mic
  
 ## What is AWS VPC Lattice?
  
-VPC Lattice is a [Layer 7](https://www.paloaltonetworks.com/cyberpedia/what-is-layer-7) networking service that connects, secures, and monitors microservices on AWS. Operating at the application layer, it routes HTTP/HTTPS traffic based on headers, paths, and methods—enabling intelligent service-to-service communication.
+VPC Lattice is a [Layer 7](https://osi-model.com/application-layer/) and [Layer 3](https://osi-model.com/network-layer/) networking service that connects, secures, and monitors microservices on AWS. When operating at the application layer, it routes HTTP/HTTPS traffic based on headers, paths, and methods—enabling intelligent service-to-service communication. When used at Layer 3, it can be used to share Amazon RDS Databases or any resource operating at the TCP level.
  
 ## Compelling Use Case: Serverless Applications
  
@@ -27,13 +27,13 @@ With VPC Lattice, you no longer need to allocate enterprise IP address space for
  
 ### Cross-Organization Integration
  
-VPC Lattice facilitates integration with other Line of Business systems both on-premises and in AWS through AWS Resource Access Manager (RAM). As a Layer 7 service, it simplifies complex integration scenarios by focusing on application-level communication rather than network-level connectivity.
+VPC Lattice facilitates integration with other Line of Business systems both on-premises and in AWS through AWS Resource Access Manager (RAM). Supporting both Layer 7 and Layer 3 connectivity, it simplifies complex integration scenarios by enabling both application-level and network-level communication.
  
 ### Streamlined Authentication
  
 Services deployed on VPC Lattice can leverage familiar IAM policies for access control, often eliminating the need for custom authentication solutions or third-party OIDC providers.
 
-```typescript
+```json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -70,7 +70,7 @@ VPC Lattice operates through a sophisticated yet straightforward mechanism:
  
 1. Service Network Creation: You create a service network that serves as the backbone for service-to-service communication.
  
-2. VPC Association: You associate one or more VPCs with this service network. A single VPC can be associated with multiple service networks for logical separation of concerns.
+2. VPC Association: You associate one or more VPCs with this service network. A VPC can only be associated with one service network.
  
 3. Service Registration: Services (like ALBs, Lambda functions, or other AWS resources) are registered with the service network.
  
@@ -106,7 +106,7 @@ As usual, before requesting changes to limits, validate that the architecture is
  
 ### Other Limitations
  
-- Protocol Support: HTTP/1.1, HTTP/2, and gRPC (no WebSockets or HTTP/3 yet)
+- Protocol Support: HTTP/1.1, HTTP/2, gRPC, and TCP (no WebSockets or HTTP/3 yet)
 - Regional Service: VPC Lattice operates within a single AWS Region
 - Authentication: Only AWS IAM and no custom authentication providers
 - TLS: TLS 1.2 and above only
@@ -127,10 +127,10 @@ Despite its many advantages, VPC Lattice isn't suitable for all use cases. Consi
 - Disaster Recovery: Cross-region failover scenarios requiring seamless networking
 - Workaround: Deploy separate VPC Lattice service networks in each region with application-level routing
  
-### Non-HTTP Protocols
-- TCP/UDP Traffic: Applications using raw TCP or UDP protocols
-- Custom Protocols: Proprietary communication protocols not based on HTTP
-- Workaround: Use AWS PrivateLink or Transit Gateway for these communication patterns
+### UDP Protocols
+- UDP Traffic: Applications using UDP protocols
+- Custom UDP Protocols: Proprietary communication protocols based on UDP
+- Workaround: Use AWS PrivateLink or Transit Gateway for UDP communication patterns
  
 ### High-Volume Data Transfer
 - Large File Transfers: The 1MB response size limit makes large data transfers inefficient
@@ -172,7 +172,7 @@ The CDK application deploys:
 #### Key Architectural Benefits Demonstrated:
  
 1. Network Isolation: Workloads run in private subnets with no internet access
-2. Service Mesh: VPC Lattice provides Layer 7 routing and service discovery
+2. Service Mesh: VPC Lattice provides Layer 7 and Layer 3 routing with service discovery
 3. Multi-Compute: Shows both serverless (Lambda) and containerized (Fargate) services
 4. AWS Integration: VPC endpoints enable private access to AWS services
 5. Observability: Access logging and CloudWatch integration
@@ -268,9 +268,9 @@ Estimating costs for service networking solutions requires understanding several
  
 #### VPC Lattice
 - Higher base cost but includes advanced Layer 7 features
-- Protocol support: HTTP/HTTPS only
+- Protocol support: HTTP/HTTPS and TCP
 - Use case: Internal microservices communication with advanced routing
-- Best for: Applications requiring Layer 7 routing, authentication, and observability
+- Best for: Applications requiring Layer 7 routing, TCP connectivity, authentication, and observability
  
 ## Conclusions
  
