@@ -165,7 +165,7 @@ The CDK application deploys:
  
 ### VPC Lattice Demo Architecture Diagram
  
-![medium](./assets/diagram-hl-arch.png)
+![medium](./assets/diagram-highlevel-arch.png)
  
 #### Key Architectural Benefits Demonstrated:
  
