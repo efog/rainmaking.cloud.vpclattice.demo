@@ -6,7 +6,7 @@ As cloud applications evolve from simple three-tier architectures to complex mic
  
 ## What is AWS VPC Lattice?
  
-VPC Lattice is a [Layer 7](https://osi-model.com/application-layer/) and [Layer 3](https://osi-model.com/network-layer/) networking service that connects, secures, and monitors microservices on AWS. When operating at the application layer, it routes HTTP/HTTPS traffic based on headers, paths, and methods—enabling intelligent service-to-service communication. When used at Layer 3, it can be used to share Amazon RDS Databases or any resource operating at the TCP level.
+VPC Lattice is a [Layer 7](https://osi-model.com/application-layer/) and [Layer 4](https://osi-model.com/transport-layer/) networking service that connects, secures, and monitors microservices on AWS. When operating at the application layer, it routes HTTP/HTTPS traffic based on headers, paths, and methods—enabling intelligent service-to-service communication. When used at Layer 4, it can be used to share Amazon RDS Databases or any resource operating at the TCP level.
  
 ## Compelling Use Case: Serverless Applications
  
@@ -27,7 +27,7 @@ With VPC Lattice, you no longer need to allocate enterprise IP address space for
  
 ### Cross-Organization Integration
  
-VPC Lattice facilitates integration with other Line of Business systems both on-premises and in AWS through AWS Resource Access Manager (RAM). Supporting both Layer 7 and Layer 3 connectivity, it simplifies complex integration scenarios by enabling both application-level and network-level communication.
+VPC Lattice facilitates integration with other Line of Business systems both on-premises and in AWS through AWS Resource Access Manager (RAM). Supporting both Layer 7 and Layer 4 connectivity, it simplifies complex integration scenarios by enabling both application-level and transport-level communication.
  
 ### Streamlined Authentication
  
@@ -172,7 +172,7 @@ The CDK application deploys:
 #### Key Architectural Benefits Demonstrated:
  
 1. Network Isolation: Workloads run in private subnets with no internet access
-2. Service Mesh: VPC Lattice provides Layer 7 and Layer 3 routing with service discovery
+2. Service Mesh: VPC Lattice provides Layer 7 and Layer 4 routing with service discovery
 3. Multi-Compute: Shows both serverless (Lambda) and containerized (Fargate) services
 4. AWS Integration: VPC endpoints enable private access to AWS services
 5. Observability: Access logging and CloudWatch integration
